@@ -2,8 +2,11 @@ package restructo.robot.doc;
 
 import java.io.File;
 
-public class RobotDoc {
+import restructo.robot.context.WorkspaceContext;
 
+public class RobotDoc {
+	
+	private WorkspaceContext workspace;
 	private File file;
 	private String[] settings; //this is without resource
 	private RobotDoc[] resources;
@@ -13,7 +16,12 @@ public class RobotDoc {
 		this.file = file;
 	}
 	
-	public static RobotDoc parseRobotDoc(File file){
+	public static RobotDoc[] parseRobotDocWithResources(File file){
+		//need implementation
+		return null;
+	}
+	
+	public String getName(){
 		//need implementation
 		return null;
 	}
@@ -57,5 +65,31 @@ public class RobotDoc {
 	public String[] getBody() {
 		return body;
 	}
+	
+	public WorkspaceContext getWorkspace() {
+		return workspace;
+	}
 
+	public void setWorkspace(WorkspaceContext workspace) {
+		this.workspace.removeDocument(this);
+		//need implementation to remove all test case, keywords and variable to workspace
+		this.workspace = workspace;
+		//need implementation to add all test case, keywords and variable to new workspace
+	}
+	
+	public Variable[] getVariables(){
+		//need implementation
+		return null;
+	}
+	
+	public Keyword[] getKeywords(){
+		//need implementation
+		return null;
+	}
+	
+	public TestCase[] getTestCases(){
+		//need implementation
+		return null;
+	}
+	
 }

@@ -1,4 +1,3 @@
-package restructo;
 
 public class Main {
 

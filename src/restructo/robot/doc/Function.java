@@ -1,11 +1,13 @@
 package restructo.robot.doc;
 
+import restructo.helper.Util;
+
 public abstract class Function {
 	private RobotDoc origin;
 	private String name;
 	private String[] body;
-	private KeyCaller[] keyCallers;
-	private VarCaller[] varCallers;
+	private KeyCaller[] keyCallers = new KeyCaller[0];
+	private VarCaller[] varCallers = new VarCaller[0];
 	
 	public Function(RobotDoc origin, String name, String[] body){
 		this.origin = origin;
@@ -49,5 +51,11 @@ public abstract class Function {
 		this.varCallers = varCallers;
 	}
 	
+	public void addKeyCaller(KeyCaller keyCaller){
+		this.keyCallers = (KeyCaller[]) Util.addToArray(keyCaller, this.keyCallers);
+	}
 	
+	public void addVarCaller(VarCaller caller){
+		this.varCallers = (VarCaller[]) Util.addToArray(caller, this.varCallers);
+	}
 }
