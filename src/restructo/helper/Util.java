@@ -1,9 +1,9 @@
 package restructo.helper;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-
-import restructo.robot.doc.RobotDoc;
+import java.util.Set;
 
 public class Util {
 
@@ -27,6 +27,7 @@ public class Util {
 		return con;
 	}
 
+	@SuppressWarnings("unchecked")
 	public static <T> void addArrayToList(Object[] arr, List<T> list) {
 		for (int i = 0; i < arr.length; i++) {
 			try {
@@ -37,6 +38,7 @@ public class Util {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	public static <T> List<T> arrayToLinkedList(Object[] arr){
 		List<T> list = new LinkedList<>();
 		for (int i = 0; i < arr.length; i++) {
@@ -49,4 +51,21 @@ public class Util {
 		return list;
 	}
 
+	@SuppressWarnings("unchecked")
+	public static<T> Set<T> arrayToHashSet(Object[] arr) {
+		Set<T> list = new HashSet<>();
+		for (int i = 0; i < arr.length; i++) {
+			try {
+				list.add((T) arr[i]);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return list;
+	}
+	
+	public static String relativePathToAbsolute(String path){
+		return path;
+	}
+	
 }
