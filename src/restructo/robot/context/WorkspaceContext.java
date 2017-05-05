@@ -211,11 +211,20 @@ public class WorkspaceContext {
 	private static void variablesScanner(WorkspaceContext workspace) {
 		RobotDoc[] docs = workspace.getDocuments();
 		Variable[] result = new Variable[0];
+		CompositeVariable[] compResult = new CompositeVariable[0];
 		for (int i = 0; i < docs.length; i++) {
 			Variable[] temp = varScanner(docs[i]);
 			result = (Variable[]) Util.concat(result, temp);
+			CompositeVariable[] compTemp = compVarScanner(docs[i]);
+			compResult = (CompositeVariable[]) Util.concat(compResult, compTemp);
 		}
+		workspace.setCompVariables(compResult);
 		workspace.setVariables(result);
+	}
+
+	private static CompositeVariable[] compVarScanner(RobotDoc robotDoc) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	private static Variable[] varScanner(RobotDoc doc) {
@@ -397,8 +406,8 @@ public class WorkspaceContext {
 		return (CompositeVariable[]) compVariables.toArray();
 	}
 
-	public void setCompVariables(List<CompositeVariable> compVariables) {
-		this.compVariables = compVariables;
+	public void setCompVariables(CompositeVariable[] compVariables) {
+		this.compVariables = Util.arrayToLinkedList(compVariables);
 	}
 
 	public boolean documentIsExist(File file) {
