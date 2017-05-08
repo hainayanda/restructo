@@ -1,20 +1,20 @@
 package restructo.robot.doc;
 
-import restructo.robot.doc.nav.Position;
+import restructo.robot.doc.nav.Location;
 
 public abstract class Caller<T> {
 	
-	private Position position;
+	private Location location;
 	private T Origin;
 
 	public abstract String getName();
 
-	public Position getPosition() {
-		return position;
+	public Location getLocation() {
+		return location;
 	}
 
-	protected void setPosition(Position position) {
-		this.position = position;
+	protected void setLocation(Location location) {
+		this.location = location;
 	}
 
 	public T getOrigin() {

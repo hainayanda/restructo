@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 import restructo.helper.Util;
+import restructo.robot.doc.CompVarCaller;
 import restructo.robot.doc.CompositeVariable;
 import restructo.robot.doc.Function;
 import restructo.robot.doc.KeyCaller;
@@ -45,7 +46,7 @@ public class WorkspaceContext {
 	private static void scanAllElement(WorkspaceContext workspace) {
 		Function[] keys = workspace.getKeywords();
 		Function[] tests = workspace.getTestCases();
-		Function[] allFuncs = (Function[]) Util.concat(keys, tests);
+		Function[] allFuncs = Util.concat(keys, tests, new Function[keys.length + tests.length]);
 		scanFunctionsElements(allFuncs);
 	}
 
@@ -64,7 +65,7 @@ public class WorkspaceContext {
 			String[] line = body[i].replaceAll("^\\s+", "").split("\\s{2,}");
 			for (int j = 0; j < line.length; j++) {
 				String sentence = line[j];
-				if (sentence.matches("^(sizzle|id(entifier)?|css|name|xpath|dom|(partial )?link|jquery|tag)\\s?=")) {
+				if (sentence.matches("^(sizzle|id(entifier)?|css|name|xpath|dom|(partial )?link|jquery|tag)\\s?=.+")) {
 					String locator = sentence.replaceAll("\\s+=\\s+", "=");
 					boolean isNew = true;
 					for (int k = 0; k < locators.length; k++) {
@@ -83,22 +84,25 @@ public class WorkspaceContext {
 
 	private static void scanFunctionCaller(Function function) {
 		RobotDoc origin = function.getOrigin();
-		RobotDoc[] allResources = (RobotDoc[]) Util.addToArray(origin, origin.getResources());
+		RobotDoc[] allResources = Util.addToArray(origin, origin.getResources(),
+				new RobotDoc[origin.getResources().length + 1]);
 		Keyword[] allKeys = extractAllKeywords(origin);
 		Variable[] allVars = extractAllVariables(origin);
+		CompositeVariable[] allCompVars = extractAllCompVars(origin);
 		String[] body = function.getBody();
 		for (int i = 0; i < body.length; i++) {
 			String[] sentences = body[i].replaceAll("^\\s+", "").split("\\s{2,}");
 			for (int j = 0; j < sentences.length; j++) {
 				String sentence = sentences[j];
-				if (sentence.matches("^\\w+\\.\\S+")) {
+				if (sentence.matches("^\\w+\\.\\S+.*")) {
 					String[] splitted = sentence.split("\\.");
 					for (int k = 0; k < allResources.length; k++) {
 						if (splitted[0].equals(allResources[k].getName())) {
 							Keyword[] keys = allResources[k].getKeywords();
 							for (int l = 0; l < keys.length; l++) {
 								if (keys[l].getName().equals(splitted[1])) {
-									KeyCaller caller = new KeyCaller(keys[l], new Position(i, j));
+									KeyCaller caller = new KeyCaller(keys[l],
+											new Location(function, new Position(i, j)));
 									function.addKeyCaller(caller);
 								}
 							}
@@ -106,18 +110,36 @@ public class WorkspaceContext {
 					}
 				} else if (sentence.matches("^\\$\\{[^${}]+\\}")) {
 					String varName = sentence.replaceAll("(^\\$\\{|\\}$)", "");
-					for (int k = 0; k < allVars.length; k++) {
-						Variable var = allVars[k];
-						if (var.getName().equals(varName)) {
-							VarCaller caller = new VarCaller(var, new Position(i, j));
-							function.addVarCaller(caller);
+					if (varName.matches("[^${}.]+\\.[^${}.]+")) {
+						String[] vars = varName.replaceAll("\\s\\.\\s", ".").split("\\.");
+						varName = vars[0];
+						String nestedName = vars[1];
+						for (int k = 0; k < allCompVars.length; k++) {
+							CompositeVariable comp = allCompVars[k];
+							if (comp.getName().equals(varName)) {
+								Variable nested = comp.getMember(nestedName);
+								if (nestedName != null) {
+									CompVarCaller caller = new CompVarCaller(comp, nested,
+											new Location(function, new Position(i, j)));
+									function.addCompVarCaller(caller);
+								}
+							}
+						}
+
+					} else {
+						for (int k = 0; k < allVars.length; k++) {
+							Variable var = allVars[k];
+							if (var.getName().equals(varName)) {
+								VarCaller caller = new VarCaller(var, new Location(function, new Position(i, j)));
+								function.addVarCaller(caller);
+							}
 						}
 					}
 				} else {
 					for (int k = 0; k < allKeys.length; k++) {
 						Keyword key = allKeys[k];
 						if (key.getName().equals(sentence)) {
-							KeyCaller caller = new KeyCaller(key, new Position(i, j));
+							KeyCaller caller = new KeyCaller(key, new Location(function, new Position(i, j)));
 							function.addKeyCaller(caller);
 						}
 					}
@@ -126,26 +148,38 @@ public class WorkspaceContext {
 		}
 	}
 
+	private static CompositeVariable[] extractAllCompVars(RobotDoc document) {
+		RobotDoc[] resources = document.getResources();
+		RobotDoc[] allResources = Util.addToArray(document, resources, new RobotDoc[resources.length + 1]);
+		CompositeVariable[] allVar = new CompositeVariable[0];
+		for (int i = 0; i < allResources.length; i++) {
+			RobotDoc resource = allResources[i];
+			CompositeVariable[] resKeywords = resource.getCompVariables();
+			allVar = Util.concat(allVar, resKeywords, new CompositeVariable[allVar.length + resKeywords.length]);
+		}
+		return allVar;
+	}
+
 	private static Variable[] extractAllVariables(RobotDoc document) {
 		RobotDoc[] resources = document.getResources();
-		RobotDoc[] allResources = (RobotDoc[]) Util.addToArray(document, resources);
+		RobotDoc[] allResources = Util.addToArray(document, resources, new RobotDoc[resources.length + 1]);
 		Variable[] allKeywords = new Variable[0];
 		for (int i = 0; i < allResources.length; i++) {
 			RobotDoc resource = allResources[i];
 			Variable[] resKeywords = resource.getVariables();
-			allKeywords = (Variable[]) Util.concat(allKeywords, resKeywords);
+			allKeywords = Util.concat(allKeywords, resKeywords, new Variable[allKeywords.length + resKeywords.length]);
 		}
 		return allKeywords;
 	}
 
 	private static Keyword[] extractAllKeywords(RobotDoc document) {
 		RobotDoc[] resources = document.getResources();
-		RobotDoc[] allResources = (RobotDoc[]) Util.addToArray(document, resources);
+		RobotDoc[] allResources = Util.addToArray(document, resources, new RobotDoc[resources.length + 1]);
 		Keyword[] allKeywords = new Keyword[0];
 		for (int i = 0; i < allResources.length; i++) {
 			RobotDoc resource = allResources[i];
 			Keyword[] resKeywords = resource.getKeywords();
-			allKeywords = (Keyword[]) Util.concat(allKeywords, resKeywords);
+			allKeywords = Util.concat(allKeywords, resKeywords, new Keyword[allKeywords.length + resKeywords.length]);
 		}
 		return allKeywords;
 	}
@@ -155,7 +189,7 @@ public class WorkspaceContext {
 		RobotDoc[] docs = workspace.getDocuments();
 		for (int i = 0; i < docs.length; i++) {
 			Keyword[] temp = keyScanner(docs[i]);
-			result = (Keyword[]) Util.concat(result, temp);
+			result = Util.concat(result, temp, new Keyword[result.length + temp.length]);
 		}
 		workspace.setKeywords(result);
 	}
@@ -167,45 +201,45 @@ public class WorkspaceContext {
 		for (int i = 0; i < body.length; i++) {
 			String line = body[i];
 			if (!isInKeywordField) {
-				if (line.matches("^\\*\\*\\*+\\sKeywords\\s\\*\\*\\*")) {
+				if (line.matches("^\\*\\*\\*+\\sKeywords\\s\\*\\*\\*\\s*")) {
 					isInKeywordField = true;
 				}
 			} else {
-				if (line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*")) {
+				if (line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*\\s*")) {
 					isInKeywordField = false;
 					break;
 				} else {
-					if (line.matches("^\\w+")) {
+					if (line.matches("^\\w+.*")) {
 						String tempName = line;
 						List<String> tempBody = new LinkedList<>();
 						List<String> tempArgs = new LinkedList<>();
 						String tempRet = null;
-						for (; i < body.length; i++) {
+						for (i++; i < body.length; i++) {
 							line = body[i];
-							if (line.matches("^\\s{2,}\\S+")) {
+							if (line.matches("^\\s{2,}\\S+.*")) {
 								String temp = line.replaceAll("^\\s+", "  ").replaceAll("\\s+$", "");
 								tempBody.add(temp);
-							} else if (line.matches("\\[Arguments\\]")) {
+							} else if (line.matches("\\[Arguments\\]\\s*")) {
 								String[] temp = line.replaceAll("^\\s+", "  ").replaceAll("\\s+$", "").split("\\s{2,}");
 								for (int j = 1; j < temp.length; j++) {
 									tempArgs.add(temp[j]);
 								}
-							} else if (line.matches("\\[Return\\]")) {
+							} else if (line.matches("\\[Return\\]\\s*")) {
 								tempRet = line.replaceAll("^\\s+\\[Return\\]\\s+", "").replaceAll("\\s+$", "");
-							} else if (line.matches("^\\w+")
-									|| line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*")) {
+							} else if (line.matches("^\\w+.*")
+									|| line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*\\s*")) {
+								i--;
 								break;
 							}
 						}
-						i--;
-						Keyword key = new Keyword(doc, tempName, (String[]) tempBody.toArray(),
-								(String[]) tempArgs.toArray(), tempRet);
+						Keyword key = new Keyword(doc, tempName, tempBody.toArray(new String[tempBody.size()]),
+								tempArgs.toArray(new String[tempArgs.size()]), tempRet);
 						keywords.add(key);
 					}
 				}
 			}
 		}
-		return (Keyword[]) keywords.toArray();
+		return keywords.toArray(new Keyword[keywords.size()]);
 	}
 
 	private static void variablesScanner(WorkspaceContext workspace) {
@@ -214,17 +248,57 @@ public class WorkspaceContext {
 		CompositeVariable[] compResult = new CompositeVariable[0];
 		for (int i = 0; i < docs.length; i++) {
 			Variable[] temp = varScanner(docs[i]);
-			result = (Variable[]) Util.concat(result, temp);
+			result = Util.concat(result, temp, new Variable[result.length + temp.length]);
 			CompositeVariable[] compTemp = compVarScanner(docs[i]);
-			compResult = (CompositeVariable[]) Util.concat(compResult, compTemp);
+			compResult = Util.concat(compResult, compTemp, new CompositeVariable[compResult.length + compTemp.length]);
 		}
 		workspace.setCompVariables(compResult);
 		workspace.setVariables(result);
 	}
 
-	private static CompositeVariable[] compVarScanner(RobotDoc robotDoc) {
-		// TODO Auto-generated method stub
-		return null;
+	private static CompositeVariable[] compVarScanner(RobotDoc doc) {
+		List<CompositeVariable> compVar = new LinkedList<>();
+		String[] body = doc.getBody();
+		boolean isInVariableField = false;
+		for (int i = 0; i < body.length; i++) {
+			String line = body[i];
+			if (!isInVariableField) {
+				if (line.matches("^\\*\\*\\*+\\sVariable\\s\\*\\*\\*\\s*")) {
+					isInVariableField = true;
+				}
+			} else {
+				if (line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*\\s*")) {
+					isInVariableField = false;
+					break;
+				} else {
+					if (line.matches("^&\\{[^{}]+\\}\\s{2,}\\S+.*")) {
+						List<Variable> nesteds = new LinkedList<>();
+						String[] sentences = line.replaceAll("\\s+$", "").split("\\s{2,}");
+						String varName = sentences[0].replaceAll("(&\\{|\\})", "");
+						String[] nest = sentences[1].replaceAll("\\s=\\s", "=").split("=");
+						Variable var = new Variable(doc, nest[0], nest[1]);
+						nesteds.add(var);
+						for (; i < body.length; i++) {
+							if (line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*\\s*")) {
+								i--;
+								break;
+							} else if (line.matches("(\\S+\\s?)+=\\s?(\\S+\\s?)+")) {
+								sentences = line.replaceAll("\\s+$", "").split("\\s{2,}");
+								nest = sentences[1].replaceAll("\\s=\\s", "=").split("=");
+								var = new Variable(doc, nest[0], nest[1]);
+								nesteds.add(var);
+							} else if (line.matches("^&\\{[^{}]+\\}\\s{2,}\\S+.*")
+									|| line.matches("^\\$\\{[^${}]+\\}.*")) {
+								i--;
+								break;
+							}
+						}
+						compVar.add(new CompositeVariable(doc, varName, nesteds.toArray(new Variable[nesteds.size()])));
+					}
+				}
+			}
+		}
+		return compVar.toArray(new CompositeVariable[compVar.size()]);
 	}
 
 	private static Variable[] varScanner(RobotDoc doc) {
@@ -234,24 +308,27 @@ public class WorkspaceContext {
 		for (int i = 0; i < body.length; i++) {
 			String line = body[i];
 			if (!isInVariableField) {
-				if (line.matches("^\\*\\*\\*+\\sVariable\\s\\*\\*\\*")) {
+				if (line.matches("^\\*\\*\\*+\\sVariable\\s\\*\\*\\*\\s*")) {
 					isInVariableField = true;
 				}
 			} else {
-				if (line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*")) {
+				if (line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*\\s*")) {
 					isInVariableField = false;
 					break;
 				} else {
-					if (line.matches("^\\$\\{[^${}]+\\}")) {
+					if (line.matches("^\\$\\{[^${}]+\\}\\s{2,}.+")) {
 						String[] sentences = line.replaceAll("\\s+$", "").split("\\s{2,}");
 						String varName = sentences[0].replaceAll("(\\$\\{|\\})", "");
-						String value = sentences[1];
+						String value = "";
+						if (sentences.length > 1) {
+							value = sentences[1];
+						}
 						variables.add(new Variable(doc, varName, value));
 					}
 				}
 			}
 		}
-		return (Variable[]) variables.toArray();
+		return variables.toArray(new Variable[variables.size()]);
 	}
 
 	private static void testsScanner(WorkspaceContext workspace) {
@@ -259,7 +336,9 @@ public class WorkspaceContext {
 		TestCase[] result = new TestCase[0];
 		for (int i = 0; i < docs.length; i++) {
 			TestCase[] temp = testScanner(docs[i]);
-			result = (TestCase[]) Util.concat(result, temp);
+			if (temp.length > 0) {
+				result = Util.concat(result, temp, new TestCase[result.length + temp.length]);
+			}
 		}
 		workspace.setTestCases(result);
 	}
@@ -271,41 +350,41 @@ public class WorkspaceContext {
 		for (int i = 0; i < body.length; i++) {
 			String line = body[i];
 			if (!isInTestField) {
-				if (line.matches("^\\*\\*\\*+\\sTest Case\\s\\*\\*\\*")) {
+				if (line.matches("^\\*\\*\\*+\\sTest Case\\s\\*\\*\\*\\s*")) {
 					isInTestField = true;
 				}
 			} else {
-				if (line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*")) {
+				if (line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*\\s*")) {
 					isInTestField = false;
 					break;
 				} else {
-					if (line.matches("^\\w+")) {
+					if (line.matches("^\\w+.+")) {
 						String tempName = line;
 						List<String> tempBody = new LinkedList<>();
-						for (; i < body.length; i++) {
+						for (i++; i < body.length; i++) {
 							line = body[i];
-							if (line.matches("^\\s{2,}\\S+")) {
+							if (line.matches("^\\s{2,}\\S+.+")) {
 								String temp = line.replaceAll("^\\s+", "  ").replaceAll("\\s+$", "");
 								tempBody.add(temp);
-							} else if (line.matches("^\\w+")
-									|| line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*")) {
+							} else if (line.matches("^\\w+.+")
+									|| line.matches("^\\*\\*\\*+\\s\\w+\\s?\\w+\\s\\*\\*\\*\\s*")) {
+								i--;
 								break;
 							}
 						}
-						i--;
-						TestCase key = new TestCase(doc, tempName, (String[]) tempBody.toArray());
+						TestCase key = new TestCase(doc, tempName, tempBody.toArray(new String[tempBody.size()]));
 						testCases.add(key);
 					}
 				}
 			}
 		}
-		return (TestCase[]) testCases.toArray();
+		return testCases.toArray(new TestCase[testCases.size()]);
 	}
 
 	private static void filesScanner(File folder, WorkspaceContext workspace) throws IOException {
 		File[] listOfFiles = folder.listFiles();
 		for (File file : listOfFiles) {
-			if (file.isFile() && file.getName().matches("\\.(robot|txt)$")) {
+			if (file.isFile() && file.getName().matches(".+\\.(txt|robot)$")) {
 				RobotDoc.parseRobotDoc(file, workspace);
 			} else if (file.isDirectory()) {
 				filesScanner(file, workspace);
@@ -319,7 +398,7 @@ public class WorkspaceContext {
 	}
 
 	public RobotDoc[] getDocuments() {
-		return (RobotDoc[]) this.documents.toArray();
+		return this.documents.toArray(new RobotDoc[this.documents.size()]);
 	}
 
 	public void setDocuments(RobotDoc[] documents) {
@@ -327,7 +406,7 @@ public class WorkspaceContext {
 	}
 
 	public TestCase[] getTestCases() {
-		return (TestCase[]) testCases.toArray();
+		return testCases.toArray(new TestCase[testCases.size()]);
 	}
 
 	public void setTestCases(TestCase[] testCases) {
@@ -335,7 +414,7 @@ public class WorkspaceContext {
 	}
 
 	public Variable[] getVariables() {
-		return (Variable[]) variables.toArray();
+		return variables.toArray(new Variable[variables.size()]);
 	}
 
 	public void setVariables(Variable[] variables) {
@@ -343,7 +422,7 @@ public class WorkspaceContext {
 	}
 
 	public Keyword[] getKeywords() {
-		return (Keyword[]) keywords.toArray();
+		return keywords.toArray(new Keyword[keywords.size()]);
 	}
 
 	public void setKeywords(Keyword[] keywords) {
@@ -395,7 +474,7 @@ public class WorkspaceContext {
 	}
 
 	public PlainLocator[] getLocators() {
-		return (PlainLocator[]) locators.toArray();
+		return locators.toArray(new PlainLocator[locators.size()]);
 	}
 
 	public void setLocators(PlainLocator[] locators) {
@@ -403,7 +482,7 @@ public class WorkspaceContext {
 	}
 
 	public CompositeVariable[] getCompVariables() {
-		return (CompositeVariable[]) compVariables.toArray();
+		return compVariables.toArray(new CompositeVariable[compVariables.size()]);
 	}
 
 	public void setCompVariables(CompositeVariable[] compVariables) {

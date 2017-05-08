@@ -19,7 +19,7 @@ public class PlainLocator {
 	}
 
 	public Location[] getLocation() {
-		return (Location[]) location.toArray();
+		return location.toArray(new Location[location.size()]);
 	}
 
 	public void addLocator(Location location){

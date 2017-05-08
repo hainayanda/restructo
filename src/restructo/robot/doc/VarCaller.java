@@ -1,12 +1,12 @@
 package restructo.robot.doc;
 
-import restructo.robot.doc.nav.Position;
+import restructo.robot.doc.nav.Location;
 
 public class VarCaller extends Caller<Variable> {
 
-	public VarCaller(Variable origin, Position position) {
+	public VarCaller(Variable origin, Location location) {
 		this.setOrigin(origin);
-		this.setPosition(position);
+		this.setLocation(location);
 	}
 
 	@Override

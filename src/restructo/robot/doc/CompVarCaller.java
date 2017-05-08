@@ -1,15 +1,15 @@
 package restructo.robot.doc;
 
-import restructo.robot.doc.nav.Position;
+import restructo.robot.doc.nav.Location;
 
 public class CompVarCaller extends Caller<CompositeVariable> {
 	
 	public Variable nestedOrigin;
 	
-	public CompVarCaller(CompositeVariable compositeVar, Variable nestedVar, Position position){
+	public CompVarCaller(CompositeVariable compositeVar, Variable nestedVar, Location location){
 		this.setOrigin(compositeVar);
 		this.nestedOrigin = nestedVar;
-		this.setPosition(position);
+		this.setLocation(location);
 	}
 	
 	@Override

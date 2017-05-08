@@ -9,15 +9,16 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import restructo.helper.Util;
 import restructo.robot.context.WorkspaceContext;
 
 public class RobotDoc {
 
 	private WorkspaceContext workspace;
 	private File file;
-	private String[] settings; // this is without resource
-	private RobotDoc[] resources;
-	private String[] body;
+	private String[] settings = new String[0]; // this is without resource
+	private RobotDoc[] resources = new RobotDoc[0];
+	private String[] body = new String[0];
 
 	public RobotDoc(File file, WorkspaceContext workspace) {
 		this.file = file;
@@ -28,6 +29,7 @@ public class RobotDoc {
 		RobotDoc doc = new RobotDoc(file, workspace);
 		doc.readFiles(file);
 		doc.searchSettings(workspace);
+		workspace.addDocument(doc);
 		return doc;
 	}
 
@@ -44,14 +46,13 @@ public class RobotDoc {
 			} else {
 				if (line.matches("^\\*\\*\\*+\\s.+\\s\\*\\*\\*")) {
 					break;
-				} else if (line.matches("^Resource\\s{2,}")) {
+				} else if (line.matches("^Resource\\s{2,}.+")) {
 					String relativePath = line.replaceAll("\\s+$", "").split("\\s{2,}")[1];
 					File resource = this.getFileFromRelativePath(relativePath);
 					if (workspace.documentIsExist(resource)) {
 						resources.add(workspace.getDocumentByFile(resource));
 					} else {
 						RobotDoc res = parseRobotDoc(resource, workspace);
-						workspace.addDocument(res);
 						resources.add(res);
 					}
 				} else if (!line.matches("^\\s*$")) {
@@ -59,22 +60,28 @@ public class RobotDoc {
 				}
 			}
 		}
+		if(resources.size() > 0){
+			this.setResources(resources.toArray(new RobotDoc[resources.size()]));
+		}
+		if(settings.size() > 0){
+			this.setSettings(settings.toArray(new String[settings.size()]));
+		}
 	}
 
 	private String getFullPathFromRelativePath(String filePath) {
 		String thisFolderPath = this.file.getAbsolutePath().replaceAll("([^\\/\\\\])+$", "");
-	    while (filePath.matches("^\\.\\.\\.?(\\/|\\\\)")) {
-	        filePath = filePath.replaceAll("^\\.\\.\\.?(\\/|\\\\)", "");
-	        thisFolderPath = thisFolderPath.replaceAll("([^\\/\\\\])+(\\/|\\\\)$", "");
-	    }
-	    return thisFolderPath + filePath;
+		while (filePath.matches("^\\.\\.\\.?(\\/|\\\\).+")) {
+			filePath = filePath.replaceAll("^\\.\\.\\.?(\\/|\\\\)", "");
+			thisFolderPath = thisFolderPath.replaceAll("([^\\/\\\\])+(\\/|\\\\)$", "");
+		}
+		return thisFolderPath + filePath;
 	}
-	
-	private File getFileFromRelativePath(String filePath){
+
+	private File getFileFromRelativePath(String filePath) {
 		String path = getFullPathFromRelativePath(filePath);
 		return new File(path);
 	}
-	
+
 	private void readFiles(File file) throws IOException {
 		BufferedReader buffer = new BufferedReader(new FileReader(file));
 		List<String> lines = new ArrayList<String>();
@@ -84,7 +91,7 @@ public class RobotDoc {
 			line = buffer.readLine();
 		}
 		buffer.close();
-		this.body = (String[]) lines.toArray();
+		this.body = lines.toArray(new String[lines.size()]);
 	}
 
 	public String getName() {
@@ -152,7 +159,20 @@ public class RobotDoc {
 				result.add(vars[i]);
 			}
 		}
-		return (Variable[]) result.toArray();
+		return result.toArray(new Variable[result.size()]);
+	}
+
+	public Variable[] getAllIncludedVariables() {
+		Variable[] thisVar = this.getVariables();
+		List<Variable> included = new LinkedList<>();
+		for (int i = 0; i < this.resources.length; i++) {
+			Variable[] include = this.resources[i].getVariables();
+			for (int j = 0; j < include.length; j++) {
+				included.add(include[j]);
+			}
+		}
+		return Util.concat(thisVar, included.toArray(new Variable[included.size()]),
+				new Variable[thisVar.length + included.size()]);
 	}
 
 	public CompositeVariable[] getCompVariables() {
@@ -163,7 +183,20 @@ public class RobotDoc {
 				result.add(vars[i]);
 			}
 		}
-		return (CompositeVariable[]) result.toArray();
+		return result.toArray(new CompositeVariable[result.size()]);
+	}
+
+	public CompositeVariable[] getAllIncludedCompVariables() {
+		CompositeVariable[] thisVar = this.getCompVariables();
+		List<CompositeVariable> included = new LinkedList<>();
+		for (int i = 0; i < this.resources.length; i++) {
+			CompositeVariable[] include = this.resources[i].getCompVariables();
+			for (int j = 0; j < include.length; j++) {
+				included.add(include[j]);
+			}
+		}
+		return Util.concat(thisVar, included.toArray(new CompositeVariable[included.size()]),
+				new CompositeVariable[included.size() + thisVar.length]);
 	}
 
 	public Keyword[] getKeywords() {
@@ -174,7 +207,7 @@ public class RobotDoc {
 				result.add(keys[i]);
 			}
 		}
-		return (Keyword[]) result.toArray();
+		return result.toArray(new Keyword[result.size()]);
 	}
 
 	public TestCase[] getTestCases() {
@@ -185,7 +218,7 @@ public class RobotDoc {
 				result.add(tests[i]);
 			}
 		}
-		return (TestCase[]) result.toArray();
+		return result.toArray(new TestCase[result.size()]);
 	}
 
 	@Override
@@ -209,23 +242,10 @@ public class RobotDoc {
 		if (getClass() != obj.getClass())
 			return false;
 		RobotDoc other = (RobotDoc) obj;
-		if (!Arrays.equals(body, other.body))
-			return false;
-		if (file == null) {
-			if (other.file != null)
-				return false;
-		} else if (!file.equals(other.file))
-			return false;
-		if (!Arrays.equals(resources, other.resources))
-			return false;
-		if (!Arrays.equals(settings, other.settings))
-			return false;
-		if (workspace == null) {
-			if (other.workspace != null)
-				return false;
-		} else if (!workspace.equals(other.workspace))
-			return false;
-		return true;
+		if (other.getFile().equals(this.getFile())){
+			return true;
+		}
+		return false;
 	}
 
 }

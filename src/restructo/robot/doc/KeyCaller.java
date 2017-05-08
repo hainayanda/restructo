@@ -1,12 +1,12 @@
 package restructo.robot.doc;
 
-import restructo.robot.doc.nav.Position;
+import restructo.robot.doc.nav.Location;
 
 public class KeyCaller extends Caller<Keyword> {
 
-	public KeyCaller(Keyword origin, Position position) {
+	public KeyCaller(Keyword origin, Location location) {
 		this.setOrigin(origin);
-		this.setPosition(position);
+		this.setLocation(location);
 	}
 
 	@Override

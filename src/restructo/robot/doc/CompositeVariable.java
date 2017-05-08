@@ -35,5 +35,14 @@ public class CompositeVariable {
 	public void setMembers(Variable[] members) {
 		this.members = members;
 	}
+	
+	public Variable getMember(String memberName){
+		for(int i = 0; i < this.members.length; i++){
+			if(this.members[i].getName().equals(memberName)){
+				return this.members[i];
+			}
+		}
+		return null;
+	}
 
 }
