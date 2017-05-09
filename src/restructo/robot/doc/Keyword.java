@@ -19,11 +19,11 @@ public class Keyword extends Function {
 		this.args = args;
 	}
 
-	public String getRet() {
+	public String getReturnValue() {
 		return ret;
 	}
 
-	public void setRet(String ret) {
+	public void setReturnValue(String ret) {
 		this.ret = ret;
 	}
 	

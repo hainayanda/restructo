@@ -33,67 +33,6 @@ public class RobotDoc {
 		return doc;
 	}
 
-	private void searchSettings(WorkspaceContext workspace) throws IOException {
-		boolean isInSettings = false;
-		List<RobotDoc> resources = new LinkedList<>();
-		List<String> settings = new LinkedList<>();
-		for (int i = 0; i < this.body.length; i++) {
-			String line = this.body[i];
-			if (!isInSettings) {
-				if (line.matches("^\\*\\*\\*+\\sSettings?\\s\\*\\*\\*")) {
-					isInSettings = true;
-				}
-			} else {
-				if (line.matches("^\\*\\*\\*+\\s.+\\s\\*\\*\\*")) {
-					break;
-				} else if (line.matches("^Resource\\s{2,}.+")) {
-					String relativePath = line.replaceAll("\\s+$", "").split("\\s{2,}")[1];
-					File resource = this.getFileFromRelativePath(relativePath);
-					if (workspace.documentIsExist(resource)) {
-						resources.add(workspace.getDocumentByFile(resource));
-					} else {
-						RobotDoc res = parseRobotDoc(resource, workspace);
-						resources.add(res);
-					}
-				} else if (!line.matches("^\\s*$")) {
-					settings.add(line);
-				}
-			}
-		}
-		if(resources.size() > 0){
-			this.setResources(resources.toArray(new RobotDoc[resources.size()]));
-		}
-		if(settings.size() > 0){
-			this.setSettings(settings.toArray(new String[settings.size()]));
-		}
-	}
-
-	private String getFullPathFromRelativePath(String filePath) {
-		String thisFolderPath = this.file.getAbsolutePath().replaceAll("([^\\/\\\\])+$", "");
-		while (filePath.matches("^\\.\\.\\.?(\\/|\\\\).+")) {
-			filePath = filePath.replaceAll("^\\.\\.\\.?(\\/|\\\\)", "");
-			thisFolderPath = thisFolderPath.replaceAll("([^\\/\\\\])+(\\/|\\\\)$", "");
-		}
-		return thisFolderPath + filePath;
-	}
-
-	private File getFileFromRelativePath(String filePath) {
-		String path = getFullPathFromRelativePath(filePath);
-		return new File(path);
-	}
-
-	private void readFiles(File file) throws IOException {
-		BufferedReader buffer = new BufferedReader(new FileReader(file));
-		List<String> lines = new ArrayList<String>();
-		String line = buffer.readLine();
-		while (line != null) {
-			lines.add(line);
-			line = buffer.readLine();
-		}
-		buffer.close();
-		this.body = lines.toArray(new String[lines.size()]);
-	}
-
 	public String getName() {
 		return this.file.getName().replaceAll("\\.\\S+$", "");
 	}
@@ -122,22 +61,6 @@ public class RobotDoc {
 		this.resources = resources;
 	}
 
-	public void addTestCase(TestCase testCase) {
-		testCase.setOrigin(this);
-	}
-
-	public void addKeyword(Keyword keyword) {
-		keyword.setOrigin(this);
-	}
-
-	public void addVariable(Variable variable) {
-		variable.setOrigin(this);
-	}
-
-	public void addCompVariable(CompositeVariable compVariable) {
-		compVariable.setOrigin(this);
-	}
-
 	public String[] getBody() {
 		return body;
 	}
@@ -147,7 +70,6 @@ public class RobotDoc {
 	}
 
 	public void setWorkspace(WorkspaceContext workspace) {
-		this.workspace.removeDocument(this);
 		this.workspace = workspace;
 	}
 
@@ -219,6 +141,83 @@ public class RobotDoc {
 			}
 		}
 		return result.toArray(new TestCase[result.size()]);
+	}
+
+	public void addTestCase(TestCase testCase) {
+		testCase.setOrigin(this);
+	}
+
+	public void addKeyword(Keyword keyword) {
+		keyword.setOrigin(this);
+	}
+
+	public void addVariable(Variable variable) {
+		variable.setOrigin(this);
+	}
+
+	public void addCompVariable(CompositeVariable compVariable) {
+		compVariable.setOrigin(this);
+	}
+
+	private void searchSettings(WorkspaceContext workspace) throws IOException {
+		boolean isInSettings = false;
+		List<RobotDoc> resources = new LinkedList<>();
+		List<String> settings = new LinkedList<>();
+		for (int i = 0; i < this.body.length; i++) {
+			String line = this.body[i];
+			if (!isInSettings) {
+				if (line.matches("^\\*\\*\\*+\\sSettings?\\s\\*\\*\\*")) {
+					isInSettings = true;
+				}
+			} else {
+				if (line.matches("^\\*\\*\\*+\\s.+\\s\\*\\*\\*")) {
+					break;
+				} else if (line.matches("^Resource\\s{2,}.+")) {
+					String relativePath = line.replaceAll("\\s+$", "").split("\\s{2,}")[1];
+					File resource = this.getFileFromRelativePath(relativePath);
+					if (workspace.documentIsExist(resource)) {
+						resources.add(workspace.getDocumentByFile(resource));
+					} else {
+						RobotDoc res = parseRobotDoc(resource, workspace);
+						resources.add(res);
+					}
+				} else if (!line.matches("^\\s*$")) {
+					settings.add(line);
+				}
+			}
+		}
+		if(resources.size() > 0){
+			this.setResources(resources.toArray(new RobotDoc[resources.size()]));
+		}
+		if(settings.size() > 0){
+			this.setSettings(settings.toArray(new String[settings.size()]));
+		}
+	}
+
+	private String getFullPathFromRelativePath(String filePath) {
+		String thisFolderPath = this.file.getAbsolutePath().replaceAll("([^\\/\\\\])+$", "");
+		while (filePath.matches("^\\.\\.\\.?(\\/|\\\\).+")) {
+			filePath = filePath.replaceAll("^\\.\\.\\.?(\\/|\\\\)", "");
+			thisFolderPath = thisFolderPath.replaceAll("([^\\/\\\\])+(\\/|\\\\)$", "");
+		}
+		return thisFolderPath + filePath;
+	}
+
+	private File getFileFromRelativePath(String filePath) {
+		String path = getFullPathFromRelativePath(filePath);
+		return new File(path);
+	}
+
+	private void readFiles(File file) throws IOException {
+		BufferedReader buffer = new BufferedReader(new FileReader(file));
+		List<String> lines = new ArrayList<String>();
+		String line = buffer.readLine();
+		while (line != null) {
+			lines.add(line);
+			line = buffer.readLine();
+		}
+		buffer.close();
+		this.body = lines.toArray(new String[lines.size()]);
 	}
 
 	@Override

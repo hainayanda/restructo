@@ -24,23 +24,143 @@ import restructo.robot.doc.nav.Position;
 public class WorkspaceContext {
 
 	private Set<RobotDoc> documents = new HashSet<>();
-	private List<TestCase> testCases = new LinkedList<>();
-	private List<Variable> variables = new LinkedList<>();
-	private List<CompositeVariable> compVariables = new LinkedList<>();
-	private List<Keyword> keywords = new LinkedList<>();
-	private List<PlainLocator> locators = new LinkedList<>();
-
+	private Set<TestCase> testCases = new HashSet<>();
+	private Set<Variable> variables = new HashSet<>();
+	private Set<CompositeVariable> compVariables = new HashSet<>();
+	private Set<Keyword> keywords = new HashSet<>();
+	private Set<PlainLocator> locators = new HashSet<>();
+	public static double PROGRESS = 1;
+	
 	public WorkspaceContext() {
 	}
 
 	public static WorkspaceContext parseWorkspace(File folder) throws IOException {
 		WorkspaceContext workspace = new WorkspaceContext();
+		PROGRESS = 0.15;
 		filesScanner(folder, workspace);
+		PROGRESS = 0.3;
 		testsScanner(workspace);
+		PROGRESS = 0.45;
 		variablesScanner(workspace);
+		PROGRESS = 0.6;
 		keywordsScanner(workspace);
+		PROGRESS = 0.75;
 		scanAllElement(workspace);
+		PROGRESS = 0.9;
 		return workspace;
+	}
+
+	public RobotDoc[] getDocuments() {
+		return this.documents.toArray(new RobotDoc[this.documents.size()]);
+	}
+
+	public void setDocuments(RobotDoc[] documents) {
+		this.documents = Util.arrayToHashSet(documents);
+	}
+
+	public TestCase[] getTestCases() {
+		return testCases.toArray(new TestCase[testCases.size()]);
+	}
+
+	public void setTestCases(TestCase[] testCases) {
+		this.testCases = Util.arrayToHashSet(testCases);
+	}
+
+	public Variable[] getVariables() {
+		return variables.toArray(new Variable[variables.size()]);
+	}
+
+	public void setVariables(Variable[] variables) {
+		this.variables = Util.arrayToHashSet(variables);
+	}
+
+	public Keyword[] getKeywords() {
+		return keywords.toArray(new Keyword[keywords.size()]);
+	}
+
+	public void setKeywords(Keyword[] keywords) {
+		this.keywords = Util.arrayToHashSet(keywords);
+	}
+
+	public PlainLocator[] getLocators() {
+		return locators.toArray(new PlainLocator[locators.size()]);
+	}
+
+	public void setLocators(PlainLocator[] locators) {
+		this.locators = Util.arrayToHashSet(locators);
+	}
+
+	public CompositeVariable[] getCompVariables() {
+		return compVariables.toArray(new CompositeVariable[compVariables.size()]);
+	}
+
+	public void setCompVariables(CompositeVariable[] compVariables) {
+		this.compVariables = Util.arrayToHashSet(compVariables);
+	}
+	
+	public void addDocument(RobotDoc document){
+		this.documents.add(document);
+		document.setWorkspace(this);
+	}
+	
+	public RobotDoc getDocumentByFile(File file) {
+		if (this.getDocuments() != null) {
+			RobotDoc[] docs = this.getDocuments();
+			for (int i = 0; i < docs.length; i++) {
+				if (docs[i].getFile().equals(file)) {
+					return docs[i];
+				}
+			}
+		}
+		return null;
+	}
+
+	public boolean documentIsExist(File file) {
+		if (this.getDocuments() != null) {
+			RobotDoc[] docs = this.getDocuments();
+			for (int i = 0; i < docs.length; i++) {
+				if (docs[i].getFile().equals(file)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private void removeVariables(RobotDoc document) {
+		Variable[] vars = this.getVariables();
+		for (int i = 0; i < vars.length; i++) {
+			if (vars[i].getOrigin().equals(document)) {
+				this.variables.remove(vars[i]);
+			}
+		}
+	}
+
+	private void removeCompVariables(RobotDoc document) {
+		CompositeVariable[] compVars = this.getCompVariables();
+		for (int i = 0; i < compVars.length; i++) {
+			if (compVars[i].getOrigin().equals(document)) {
+				this.compVariables.remove(compVars[i]);
+			}
+		}
+	}
+
+	private void removeKeywords(RobotDoc document) {
+		Keyword[] keys = this.getKeywords();
+		for (int i = 0; i < keys.length; i++) {
+			if (keys[i].getOrigin().equals(document)) {
+				this.keywords.remove(keys[i]);
+			}
+		}
+	}
+
+	private void removeTestCases(RobotDoc document) {
+		TestCase[] test = this.getTestCases();
+		for (int i = 0; i < test.length; i++) {
+			if (test[i].getOrigin().equals(document)) {
+				this.testCases.remove(test[i]);
+			}
+		}
 	}
 
 	private static void scanAllElement(WorkspaceContext workspace) {
@@ -71,7 +191,7 @@ public class WorkspaceContext {
 					for (int k = 0; k < locators.length; k++) {
 						if (locators[k].getValue().equals(locator)) {
 							isNew = false;
-							locators[k].addLocator(new Location(function, new Position(i, j)));
+							locators[k].addLocation(new Location(function, new Position(i, j)));
 						}
 					}
 					if (isNew) {
@@ -125,7 +245,7 @@ public class WorkspaceContext {
 								}
 							}
 						}
-
+	
 					} else {
 						for (int k = 0; k < allVars.length; k++) {
 							Variable var = allVars[k];
@@ -390,127 +510,6 @@ public class WorkspaceContext {
 				filesScanner(file, workspace);
 			}
 		}
-	}
-
-	public void addDocument(RobotDoc robotDoc) {
-		this.documents.add(robotDoc);
-
-	}
-
-	public RobotDoc[] getDocuments() {
-		return this.documents.toArray(new RobotDoc[this.documents.size()]);
-	}
-
-	public void setDocuments(RobotDoc[] documents) {
-		this.documents = Util.arrayToHashSet(documents);
-	}
-
-	public TestCase[] getTestCases() {
-		return testCases.toArray(new TestCase[testCases.size()]);
-	}
-
-	public void setTestCases(TestCase[] testCases) {
-		this.testCases = Util.arrayToLinkedList(testCases);
-	}
-
-	public Variable[] getVariables() {
-		return variables.toArray(new Variable[variables.size()]);
-	}
-
-	public void setVariables(Variable[] variables) {
-		this.variables = Util.arrayToLinkedList(variables);
-	}
-
-	public Keyword[] getKeywords() {
-		return keywords.toArray(new Keyword[keywords.size()]);
-	}
-
-	public void setKeywords(Keyword[] keywords) {
-		this.keywords = Util.arrayToLinkedList(keywords);
-	}
-
-	private void removeVariables(RobotDoc document) {
-		Variable[] vars = this.getVariables();
-		for (int i = 0; i < vars.length; i++) {
-			if (vars[i].getOrigin().equals(document)) {
-				this.variables.remove(vars[i]);
-			}
-		}
-	}
-
-	private void removeCompVariables(RobotDoc document) {
-		CompositeVariable[] compVars = this.getCompVariables();
-		for (int i = 0; i < compVars.length; i++) {
-			if (compVars[i].getOrigin().equals(document)) {
-				this.compVariables.remove(compVars[i]);
-			}
-		}
-	}
-
-	private void removeKeywords(RobotDoc document) {
-		Keyword[] keys = this.getKeywords();
-		for (int i = 0; i < keys.length; i++) {
-			if (keys[i].getOrigin().equals(document)) {
-				this.keywords.remove(keys[i]);
-			}
-		}
-	}
-
-	private void removeTestCases(RobotDoc document) {
-		TestCase[] test = this.getTestCases();
-		for (int i = 0; i < test.length; i++) {
-			if (test[i].getOrigin().equals(document)) {
-				this.testCases.remove(test[i]);
-			}
-		}
-	}
-
-	public void removeDocument(RobotDoc document) {
-		this.documents.remove(document);
-		this.removeVariables(document);
-		this.removeCompVariables(document);
-		this.removeKeywords(document);
-		this.removeTestCases(document);
-	}
-
-	public PlainLocator[] getLocators() {
-		return locators.toArray(new PlainLocator[locators.size()]);
-	}
-
-	public void setLocators(PlainLocator[] locators) {
-		this.locators = Util.arrayToLinkedList(locators);
-	}
-
-	public CompositeVariable[] getCompVariables() {
-		return compVariables.toArray(new CompositeVariable[compVariables.size()]);
-	}
-
-	public void setCompVariables(CompositeVariable[] compVariables) {
-		this.compVariables = Util.arrayToLinkedList(compVariables);
-	}
-
-	public boolean documentIsExist(File file) {
-		if (this.getDocuments() != null) {
-			RobotDoc[] docs = this.getDocuments();
-			for (int i = 0; i < docs.length; i++) {
-				if (docs[i].getFile().equals(file)) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	public RobotDoc getDocumentByFile(File file) {
-		if (this.getDocuments() != null) {
-			RobotDoc[] docs = this.getDocuments();
-			for (int i = 0; i < docs.length; i++) {
-				if (docs[i].getFile().equals(file)) {
-					return docs[i];
-				}
-			}
-		}
-		return null;
 	}
 
 }

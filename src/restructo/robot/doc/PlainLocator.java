@@ -22,7 +22,7 @@ public class PlainLocator {
 		return location.toArray(new Location[location.size()]);
 	}
 
-	public void addLocator(Location location){
+	public void addLocation(Location location){
 		this.location.add(location);
 	}
 	
